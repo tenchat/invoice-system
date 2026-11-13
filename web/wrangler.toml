@@ -1,0 +1,13 @@
+name = "invoice-system-web"
+main = "src/worker.js"
+compatibility_date = "2026-11-14"
+compatibility_flags = ["allow_custom_ports"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = ["/api", "/api/*"]
+not_found_handling = "single-page-application"
+
+[vars]
+API_ORIGIN = "http://47.103.113.70:3001"
