@@ -1,0 +1,14 @@
+node_modules/
+.venv-ocr/
+dist/
+server/data/
+server/uploads/
+example.pdf
+example.jpg
+.env
+.env.*
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+

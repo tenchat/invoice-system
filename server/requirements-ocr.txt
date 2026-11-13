@@ -1,0 +1,5 @@
+rapidocr @ git+https://github.com/RapidAI/RapidOCR.git@ae1d898295ecec19df7f4782f52949780e56d211#subdirectory=python
+onnxruntime==1.20.1
+opencv-python-headless==4.11.0.86
+numpy==2.4.4
+

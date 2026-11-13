@@ -1,0 +1,25 @@
+{
+  "name": "digital-invoice-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "数电发票收集与拼版打印系统 (Vue3 + Express + SQLite)",
+  "scripts": {
+    "setup": "cd server && npm install && cd ../web && npm install",
+    "setup:ocr": "python server/src/scripts/setup_ocr.py",
+    "init-db": "cd server && npm run init-db",
+    "seed": "cd server && npm run seed",
+    "test": "cd server && npm test",
+    "dev": "concurrently -n SERVER,WEB -c cyan,green \"cd server && npm run dev\" \"cd web && npm run dev\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "build": "cd web && npm run build",
+    "start": "cd server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}
+

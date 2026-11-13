@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EI:ElectronicInvoice xmlns:EI="http://example.org/digital-invoice/1.0">
+  <EI:Header>
+    <EI:InvoiceNumber>24312000000012345678</EI:InvoiceNumber>
+    <EI:IssueDate>2026-05-01</EI:IssueDate>
+    <EI:Remark>测试用样例发票</EI:Remark>
+  </EI:Header>
+  <EI:Buyer>
+    <EI:Name>重庆大学</EI:Name>
+    <EI:TaxID>12500000400001234X</EI:TaxID>
+  </EI:Buyer>
+  <EI:Seller>
+    <EI:Name>重庆某某科技有限公司</EI:Name>
+    <EI:TaxID>91500107MA5UXXXXXY</EI:TaxID>
+  </EI:Seller>
+  <EI:Totals>
+    <EI:AmountExclTax>200.00</EI:AmountExclTax>
+    <EI:TotalTax>26.00</EI:TotalTax>
+    <EI:AmountInclTax>226.00</EI:AmountInclTax>
+  </EI:Totals>
+  <EI:Items>
+    <EI:Item>
+      <EI:Name>*信息技术服务*软件开发</EI:Name>
+      <EI:Spec>标准版</EI:Spec>
+      <EI:Unit>项</EI:Unit>
+      <EI:Quantity>1</EI:Quantity>
+      <EI:UnitPrice>100.00</EI:UnitPrice>
+      <EI:Amount>100.00</EI:Amount>
+      <EI:TaxRate>13%</EI:TaxRate>
+      <EI:TaxAmount>13.00</EI:TaxAmount>
+    </EI:Item>
+    <EI:Item>
+      <EI:Name>*信息技术服务*技术服务</EI:Name>
+      <EI:Spec>V1.0</EI:Spec>
+      <EI:Unit>次</EI:Unit>
+      <EI:Quantity>2</EI:Quantity>
+      <EI:UnitPrice>50.00</EI:UnitPrice>
+      <EI:Amount>100.00</EI:Amount>
+      <EI:TaxRate>13%</EI:TaxRate>
+      <EI:TaxAmount>13.00</EI:TaxAmount>
+    </EI:Item>
+  </EI:Items>
+</EI:ElectronicInvoice>
+
