@@ -10,6 +10,7 @@
         <template #tip>
           <div class="muted" style="font-size:12px">
             仅支持电子发票（XML / PDF / JPG / PNG），可多选，单文件 ≤ 10MB，一次最多 10 个。
+            为提升解析效率，建议优先上传 PDF 格式发票；图片文件解析耗时相对较长。
           </div>
         </template>
       </el-upload>
