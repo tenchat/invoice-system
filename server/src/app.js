@@ -6,6 +6,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const config = require('../config');
 const { getDb } = require('./db');
+const { startOrphanFileCleanup } = require('./services/orphanFileCleanup');
 const { errorHandler, notFound, ApiError } = require('./middleware/error');
 
 const app = express();
@@ -41,9 +42,9 @@ app.use(notFound);
 app.use(errorHandler);
 
 getDb();
+startOrphanFileCleanup();
 app.listen(config.port, () => {
   console.log(`[server] http://localhost:${config.port}  (health: /api/health)`);
 });
 
 module.exports = app;
-

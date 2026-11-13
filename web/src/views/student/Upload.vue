@@ -17,6 +17,9 @@
         <el-button type="primary" :loading="parsing" :disabled="!fileList.length" @click="doParse">
           解析选中文件（{{ fileList.length }}）
         </el-button>
+        <el-button type="success" :loading="submitting" :disabled="!readyDraftCount || parsing" @click="submitReadyDrafts">
+          一键提交可提交草稿（{{ readyDraftCount }}）
+        </el-button>
         <el-button @click="addBlank">手动录入空白发票</el-button>
         <el-button :disabled="!drafts.length" @click="clearAll">清空草稿</el-button>
       </div>
@@ -48,7 +51,7 @@
               <el-button v-if="current.fileId" size="small" :loading="reparsing" @click="reparseCurrent">重新解析</el-button>
               <el-button v-if="current.fileId && current.previewUrl" size="small" @click="openPreview">查看版式图</el-button>
               <el-button size="small" @click="removeDraft(activeIndex)">移除草稿</el-button>
-              <el-button type="primary" :loading="submitting" :disabled="current.submitted" @click="submitCurrent">
+              <el-button type="primary" :loading="submitting" :disabled="current.submitted || submitting" @click="submitCurrent">
                 {{ current.submitted ? '已提交' : '确认提交' }}
               </el-button>
             </div>
@@ -80,7 +83,31 @@ let seq = 0;
 
 const current = computed(() => drafts.value[activeIndex.value] || null);
 const pendingCount = computed(() => drafts.value.filter((d) => !d.submitted).length);
+const readyDraftCount = computed(() => drafts.value.filter(isReadyToSubmit).length);
 onMounted(async () => { policy.value = await api.getAmountPolicy(); });
+
+function amountFor(d) {
+  const raw = String(d.invoice?.amountInclTax ?? '').replace(/[¥￥,，\s]/g, '');
+  const entered = raw ? Number(raw) : NaN;
+  return Math.max(Number.isFinite(entered) ? entered : 0, Number(d.recognizedTotal) || 0);
+}
+function isReadyToSubmit(d) {
+  if (d.submitted || !d.invoice?.invoiceNumber) return false;
+  const raw = String(d.invoice?.amountInclTax ?? '').replace(/[¥￥,，\s]/g, '');
+  const entered = Number(raw);
+  if (!raw || !Number.isFinite(entered) || entered < 0 || Number(entered.toFixed(2)) !== entered) return false;
+  const amount = amountFor(d);
+  if (!Number.isFinite(amount)) return false;
+  if (policy.value.maxAmount != null && amount > policy.value.maxAmount) return false;
+  if (amount > policy.value.purposeThreshold && !String(d.fundPurpose || '').trim()) return false;
+  return true;
+}
+function invoicePayload(d) {
+  return {
+    fileId: d.fileId, invoice: d.invoice, items: d.items, sources: d.sources,
+    warnings: d.warnings, parseStatus: d.parseStatus, fundPurpose: d.fundPurpose
+  };
+}
 
 function onChange(file, list) {
   const f = file.raw;
@@ -123,7 +150,7 @@ async function doParse() {
     activeIndex.value = drafts.value.findIndex((d) => !d.submitted);
     if (activeIndex.value < 0) activeIndex.value = 0;
     const accepted = res.results.filter((r) => !r.blocked).length;
-    if (accepted) ElMessage.success(`已生成 ${accepted} 份草稿，请确认后提交`);
+    if (accepted) ElMessage.success(`已生成 ${accepted} 份草稿，可核对后使用一键提交`);
   } catch (_e) { /* 拦截器已提示 */ }
   finally { parsing.value = false; }
 }
@@ -156,16 +183,45 @@ async function submitCurrent() {
   }
   submitting.value = true;
   try {
-    await api.createInvoice({
-      fileId: d.fileId, invoice: d.invoice, items: d.items, sources: d.sources,
-      warnings: d.warnings, parseStatus: d.parseStatus, fundPurpose: d.fundPurpose
-    });
+    await api.createInvoice(invoicePayload(d));
     d.submitted = true;
     ElMessage.success('提交成功');
     const next = drafts.value.findIndex((x) => !x.submitted);
     if (next >= 0) activeIndex.value = next;
   } catch (_e) { /* 拦截器已提示，草稿保留 */ }
   finally { submitting.value = false; }
+}
+
+async function submitReadyDrafts() {
+  const ready = drafts.value.filter(isReadyToSubmit);
+  if (!ready.length || submitting.value) return;
+  submitting.value = true;
+  let succeeded = 0;
+  let failed = 0;
+  try {
+    for (const d of ready) {
+      try {
+        await api.createInvoice(invoicePayload(d));
+        d.submitted = true;
+        succeeded++;
+      } catch (_e) {
+        // Keep failed drafts editable so the user can resolve duplicate or server validation errors.
+        failed++;
+      }
+    }
+    const skipped = pendingCount.value - failed;
+    if (succeeded) ElMessage.success(`已提交 ${succeeded} 张发票`);
+    if (failed || skipped) {
+      const details = [];
+      if (failed) details.push(`${failed} 张提交失败`);
+      if (skipped) details.push(`${skipped} 张需补全信息或超过金额上限`);
+      ElMessage.warning(details.join('，'));
+    }
+    const next = drafts.value.findIndex((d) => !d.submitted);
+    if (next >= 0) activeIndex.value = next;
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function removeDraft(i) {
@@ -188,4 +244,3 @@ function openPreview() {
 .draft-item.active { border-color: var(--brand); background: #f2f6fd; }
 .draft-item.done { opacity: .6; }
 </style>
-
