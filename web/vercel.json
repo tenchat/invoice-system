@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://47.103.113.70:3001/api/:path*"
+      "destination": "http://invoice-service.zhong2.fun/api/:path*"
     },
     {
       "source": "/:path*",
