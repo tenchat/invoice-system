@@ -51,7 +51,8 @@
     </div>
 
     <div class="page-card">
-      <el-table ref="invoiceTable" :data="list" v-loading="loading" border size="small" stripe @selection-change="(v) => selection = v">
+      <el-table ref="invoiceTable" :data="list" v-loading="loading" border size="small" stripe
+        @selection-change="(v) => selection = v" @sort-change="changeSort">
         <el-table-column type="selection" width="44" />
         <el-table-column type="expand">
           <template #default="{ row }">
@@ -70,19 +71,19 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="studentName" label="姓名" width="90" />
-        <el-table-column prop="studentId" label="学号" width="120" />
-        <el-table-column prop="invoiceNumber" label="发票号码" min-width="190" />
-        <el-table-column prop="issueDate" label="开票日期" width="112" />
-        <el-table-column prop="sellerName" label="销售方" min-width="160" show-overflow-tooltip />
-        <el-table-column label="价税合计" width="112" align="right"><template #default="{ row }">{{ yuan(row.amountInclTax) }}</template></el-table-column>
-        <el-table-column label="打印状态" width="100" align="center">
+        <el-table-column prop="studentName" label="姓名" width="90" sortable="custom" />
+        <el-table-column prop="studentId" label="学号" width="120" sortable="custom" />
+        <el-table-column prop="invoiceNumber" label="发票号码" min-width="190" sortable="custom" />
+        <el-table-column prop="issueDate" label="开票日期" width="112" sortable="custom" />
+        <el-table-column prop="sellerName" label="销售方" min-width="160" show-overflow-tooltip sortable="custom" />
+        <el-table-column prop="amountInclTax" label="价税合计" width="112" align="right" sortable="custom"><template #default="{ row }">{{ yuan(row.amountInclTax) }}</template></el-table-column>
+        <el-table-column prop="printStatus" label="打印状态" width="100" align="center" sortable="custom">
           <template #default="{ row }"><el-tag :type="row.printStatus ? 'success' : 'info'" size="small" effect="dark">{{ row.printStatus ? '已打印' : '未打印' }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="报销状态" width="100" align="center">
+        <el-table-column prop="reimbursed" label="报销状态" width="100" align="center" sortable="custom">
           <template #default="{ row }"><el-tag :type="row.reimbursed ? 'success' : 'info'" size="small">{{ row.reimbursed ? '已报销' : '未报销' }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="锁定" width="70" align="center"><template #default="{ row }"><span v-if="row.locked" style="color:#e6a23c">已锁定</span><span v-else class="muted">—</span></template></el-table-column>
+        <el-table-column prop="locked" label="锁定" width="70" align="center" sortable="custom"><template #default="{ row }"><span v-if="row.locked" style="color:#e6a23c">已锁定</span><span v-else class="muted">—</span></template></el-table-column>
         <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" :disabled="!row.fileId" @click="api.openRaw(row.fileId, row.detectedType)">原件</el-button>
@@ -119,11 +120,12 @@ const router = useRouter();
 const list = ref([]), itemsMap = ref({}), total = ref(0);
 const selection = ref([]), loading = ref(false), range = ref([]);
 const summary = ref({ unprinted: 0, printed: 0, total: 0 });
-const query = reactive({ q: '', name: '', studentId: '', seller: '', from: '', to: '', minAmount: '', maxAmount: '', status: '', page: 1, size: 20 });
+const query = reactive({ q: '', name: '', studentId: '', seller: '', from: '', to: '', minAmount: '', maxAmount: '', status: '', page: 1, size: 20, sortBy: '', sortOrder: 'descending' });
 const editVisible = ref(false), editDraft = ref(null), editId = ref(null);
 const openingId = ref(null), deletingId = ref(null), saving = ref(false);
 const batchDeleting = ref(false), invoiceTable = ref(null);
 const reimbursementId = ref(null), batchReimbursement = ref(null);
+const resettingSort = ref(false);
 const deleting = computed(() => !!deletingId.value || batchDeleting.value);
 const policy = ref(null);
 
@@ -144,9 +146,18 @@ async function load(page) {
 }
 function reset() {
   Object.assign(query, { q: '', name: '', studentId: '', seller: '', from: '', to: '', minAmount: '', maxAmount: '', status: '', page: 1, size: 20 });
+  query.sortBy = ''; query.sortOrder = 'descending';
+  resettingSort.value = true;
+  invoiceTable.value?.clearSort();
+  resettingSort.value = false;
   range.value = []; load();
 }
 function quickUnprinted() { query.status = 'unprinted'; load(1); }
+function changeSort({ prop, order }) {
+  query.sortBy = order ? prop : '';
+  query.sortOrder = order || 'descending';
+  if (!resettingSort.value) load(1);
+}
 
 async function openEdit(row) {
   if (openingId.value || deleting.value) return;
