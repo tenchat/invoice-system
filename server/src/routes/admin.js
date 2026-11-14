@@ -90,6 +90,11 @@ router.put('/invoices/:id/reimbursement', wrap(async (req, res) => {
   res.json(printSvc.setReimbursed([id], req.body.reimbursed, req));
 }));
 
+router.post('/invoices/reimbursement', wrap(async (req, res) => {
+  if (req.body?.confirm !== true) throw new ApiError(400, '批量标记报销需要二次确认');
+  res.json(printSvc.setReimbursed(req.body?.ids, req.body?.reimbursed, req));
+}));
+
 /** 批量标记打印状态：必须 confirm:true（服务端二次确认） */
 router.post('/invoices/print-status', wrap(async (req, res) => {
   const r = printSvc.markStatus(req.body?.ids, !!req.body?.status, req);
