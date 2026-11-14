@@ -8,6 +8,35 @@ const napiCanvas = require('./env');   // 注入 Web API polyfill 后再加载 p
 const { createCanvas, loadImage } = napiCanvas;
 const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
 const config = require('../../config');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+
+function renderWithPdfium(buffer, scale, pageNumber) {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(config.ocr.python)) return reject(new Error('PDF 渲染依赖未安装'));
+    const child = spawn(config.ocr.python, ['-X', 'utf8', path.join(__dirname, 'pdfium_worker.py'), String(pageNumber), String(scale)], { windowsHide: true });
+    const chunks = [];
+    let size = 0, diagnostic = '', settled = false;
+    const finish = (error, png) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error); else resolve(png);
+    };
+    const timer = setTimeout(() => { child.kill(); finish(new Error('PDF 渲染超时')); }, 30000);
+    child.stdout.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > 32 * 1024 * 1024) { child.kill(); finish(new Error('PDF 预览图过大')); }
+      else chunks.push(chunk);
+    });
+    child.stderr.setEncoding('utf8').on('data', (chunk) => { diagnostic = (diagnostic + chunk).slice(-2000); });
+    child.stdin.on('error', () => {});
+    child.once('error', (error) => finish(error));
+    child.once('close', (code) => code === 0 ? finish(null, Buffer.concat(chunks)) : finish(new Error(diagnostic.trim().split(/\r?\n/).at(-1) || 'PDF 渲染失败')));
+    child.stdin.end(buffer);
+  });
+}
 
 /** pdf.js 需要的 canvas 工厂 */
 class NodeCanvasFactory {
@@ -30,6 +59,13 @@ class NodeCanvasFactory {
  * @returns {Promise<{png:Buffer,width:number,height:number,rgba:Uint8ClampedArray}|null>}
  */
 async function renderPdfToPng(buffer, scale = config.pdf.renderScale, pageNumber = 1) {
+  try {
+    const png = await renderWithPdfium(buffer, scale, pageNumber);
+    const decoded = await decodeImageToRgba(png);
+    if (decoded) return { png, ...decoded };
+  } catch (e) {
+    console.warn('[raster] PDFium 不可用，使用备用渲染器:', e.message);
+  }
   const factory = new NodeCanvasFactory();
   let doc;
   try {
@@ -101,4 +137,3 @@ async function buildRaster(buffer, detectedType) {
 }
 
 module.exports = { renderPdfToPng, decodeImageToRgba, shrinkForQr, buildRaster, NodeCanvasFactory };
-

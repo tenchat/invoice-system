@@ -178,14 +178,14 @@ router.get('/:id/raw', allowQueryToken, auth, wrap(async (req, res) => {
 router.get('/:id/preview', allowQueryToken, auth, wrap(async (req, res) => {
   const f = getDb().prepare('SELECT * FROM files WHERE id = ?').get(Number(req.params.id) || 0);
   assertCanRead(f, req.user);
-  if (f.detected_type === 'pdf' && req.query.page !== undefined) {
-    const pageNumber = Number(req.query.page);
+  if (f.detected_type === 'pdf') {
+    const pageNumber = req.query.page === undefined ? 1 : Number(req.query.page);
     if (!Number.isInteger(pageNumber) || pageNumber < 1) throw new ApiError(400, 'PDF 页码不合法');
     const rawPath = safeResolve(f.rel_path);
     if (!rawPath || !fs.existsSync(rawPath)) throw new ApiError(404, '原件文件已丢失');
     const page = await renderPdfToPng(fs.readFileSync(rawPath), 1.4, pageNumber);
     if (!page) throw new ApiError(422, '无法预览原件 PDF 页面');
-    res.type('png').set('Cache-Control', 'private, max-age=600').send(page.png);
+    res.type('png').set('Cache-Control', 'private, no-store').send(page.png);
     return;
   }
   if (!f.preview_rel_path) throw new ApiError(404, '该文件没有版式预览图');
@@ -199,4 +199,3 @@ router.get('/:id/preview', allowQueryToken, auth, wrap(async (req, res) => {
 module.exports = router;
 module.exports.reparseFileRecord = reparseFileRecord;
 module.exports.decodeFilename = decodeFilename;
-
