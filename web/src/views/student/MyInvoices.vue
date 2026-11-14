@@ -15,22 +15,23 @@
     </div>
 
     <div class="page-card">
-      <el-table :data="list" v-loading="loading" border size="small" stripe>
-        <el-table-column prop="invoiceNumber" label="发票号码" min-width="190" />
-        <el-table-column prop="issueDate" label="开票日期" width="115" />
-        <el-table-column prop="sellerName" label="销售方" min-width="170" show-overflow-tooltip />
-        <el-table-column label="价税合计" width="115" align="right">
+      <el-table :data="list" v-loading="loading" border size="small" stripe
+        :default-sort="{ prop: 'createdAt', order: 'descending' }" @sort-change="changeSort">
+        <el-table-column prop="invoiceNumber" label="发票号码" min-width="190" sortable="custom" :sort-orders="sortOrders" />
+        <el-table-column prop="issueDate" label="开票日期" width="115" sortable="custom" :sort-orders="sortOrders" />
+        <el-table-column prop="sellerName" label="销售方" min-width="170" show-overflow-tooltip sortable="custom" :sort-orders="sortOrders" />
+        <el-table-column prop="amountInclTax" label="价税合计" width="115" align="right" sortable="custom" :sort-orders="sortOrders">
           <template #default="{ row }"><b>{{ yuan(row.amountInclTax) }}</b></template>
         </el-table-column>
-        <el-table-column label="打印状态" width="100" align="center">
+        <el-table-column prop="printStatus" label="打印状态" width="100" align="center" sortable="custom" :sort-orders="sortOrders">
           <template #default="{ row }">
             <el-tag :type="row.printStatus ? 'success' : 'info'" size="small" effect="dark">{{ row.printStatus ? '已打印' : '未打印' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="锁定" width="70" align="center">
+        <el-table-column prop="locked" label="锁定" width="70" align="center" sortable="custom" :sort-orders="sortOrders">
           <template #default="{ row }"><el-tag v-if="row.locked" type="warning" size="small">已锁定</el-tag><span v-else class="muted">—</span></template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="上传时间" width="160" class-name="hide-on-mobile" />
+        <el-table-column prop="createdAt" label="上传时间" width="160" class-name="hide-on-mobile" sortable="custom" :sort-orders="sortOrders" />
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showDetail(row)">明细</el-button>
@@ -102,7 +103,8 @@ const loading = ref(false);
 const saving = ref(false);
 const reparsing = ref(false);
 const range = ref([]);
-const query = reactive({ q: '', from: '', to: '', status: '', page: 1, size: 20 });
+const query = reactive({ q: '', from: '', to: '', status: '', page: 1, size: 20, sortBy: 'createdAt', sortOrder: 'descending' });
+const sortOrders = ['ascending', 'descending'];
 const detailVisible = ref(false), detail = ref(null);
 const editVisible = ref(false), editDraft = ref(null), editId = ref(null), editFileId = ref(null);
 const policy = ref({ purposeThreshold: 200, maxAmount: null });
@@ -118,6 +120,12 @@ async function load(page) {
     const res = await api.getInvoices(query);
     list.value = res.list; total.value = res.total;
   } finally { loading.value = false; }
+}
+function changeSort({ prop, order }) {
+  if (!prop || !order) return;
+  query.sortBy = prop;
+  query.sortOrder = order;
+  load(1);
 }
 function reset() {
   Object.assign(query, { q: '', from: '', to: '', status: '', page: 1, size: 20 });
@@ -168,4 +176,3 @@ async function remove(row) {
 }
 onMounted(() => load());
 </script>
-

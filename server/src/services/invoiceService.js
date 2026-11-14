@@ -139,7 +139,13 @@ function listInvoices(user, filters = {}) {
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const total = db.prepare(`SELECT COUNT(*) AS c FROM invoices i LEFT JOIN users u ON u.id = i.user_id ${clause}`).get(...args).c;
   const page = intIn(filters.page, 1, 1, 100000), size = intIn(filters.size, 20, 1, 100000);
-  const rows = db.prepare(`${SELECT} ${clause} ORDER BY i.created_at DESC, i.id DESC LIMIT ? OFFSET ?`)
+  const sortColumns = {
+    invoiceNumber: 'i.invoice_number', issueDate: 'i.issue_date', sellerName: 'i.seller_name',
+    amountInclTax: 'i.amount_incl_tax', printStatus: 'i.print_status', locked: 'i.locked', createdAt: 'i.created_at'
+  };
+  const sortColumn = sortColumns[filters.sortBy] || 'i.created_at';
+  const sortDirection = filters.sortOrder === 'ascending' ? 'ASC' : 'DESC';
+  const rows = db.prepare(`${SELECT} ${clause} ORDER BY ${sortColumn} ${sortDirection}, i.id DESC LIMIT ? OFFSET ?`)
     .all(...args, size, (page - 1) * size);
   const withItems = !!filters.withItems;
   return {
@@ -249,4 +255,3 @@ function stats(user) {
 }
 
 module.exports = { toDto, getItems, createInvoice, listInvoices, getInvoice, getRaw, updateInvoice, deleteInvoice, deleteInvoices, stats, assertMutable, SELECT };
-
