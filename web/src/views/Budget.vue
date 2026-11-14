@@ -15,6 +15,29 @@
       </div>
       <p class="muted">按已提交发票的价税合计统计。</p>
     </div>
+    <div v-if="store.isAdmin" class="page-card mb-12" v-loading="reimbursementLoading">
+      <h4>已报经费统计</h4>
+      <div class="toolbar mb-12">
+        <el-input v-model="reimbursementQuery.name" placeholder="姓名" clearable style="width:140px" @keyup.enter="loadReimbursements" />
+        <el-input v-model="reimbursementQuery.studentId" placeholder="学号" clearable style="width:150px" @keyup.enter="loadReimbursements" />
+        <el-date-picker v-model="reimbursementRange" type="daterange" value-format="YYYY-MM-DD" start-placeholder="开票开始日期" end-placeholder="开票结束日期" style="width:280px" />
+        <el-button type="primary" @click="loadReimbursements">查询</el-button>
+        <el-button @click="resetReimbursements">重置</el-button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="k">已报经费</div><div class="v">{{ yuan(reimbursements.amount) }}</div></div>
+        <div class="stat-card"><div class="k">已报销发票</div><div class="v">{{ reimbursements.count }} 张</div></div>
+        <div class="stat-card"><div class="k">金额缺失</div><div class="v">{{ reimbursements.missingAmount }} 张</div></div>
+      </div>
+      <p class="muted">按已标记为已报销的发票价税合计统计；日期筛选按开票日期，金额缺失的发票不计入金额。</p>
+      <el-table :data="reimbursements.users" border size="small" empty-text="没有符合条件的已报销发票">
+        <el-table-column prop="name" label="姓名" min-width="120" />
+        <el-table-column prop="studentId" label="学号" min-width="130" />
+        <el-table-column prop="count" label="已报销发票" width="120" />
+        <el-table-column label="已报经费" min-width="140"><template #default="{ row }">{{ yuan(row.amount) }}</template></el-table-column>
+        <el-table-column prop="missingAmount" label="金额缺失" width="110" />
+      </el-table>
+    </div>
     <div class="page-card">
       <h4>预算分布</h4>
       <div ref="chartEl" style="height:360px;width:100%"></div>
@@ -39,6 +62,9 @@ import { yuan } from '../utils/format';
 const store = useUserStore();
 const data = ref({ limit: null, spent: 0, remaining: null, users: [] });
 const limitInput = ref(null), loading = ref(false), saving = ref(false), chartEl = ref();
+const reimbursementQuery = ref({ name: '', studentId: '' });
+const reimbursementRange = ref([]), reimbursementLoading = ref(false);
+const reimbursements = ref({ amount: 0, count: 0, missingAmount: 0, users: [] });
 let chart;
 const resize = () => chart?.resize();
 
@@ -69,11 +95,22 @@ async function save() {
   try { await api.setBudget(limitInput.value); await load(); ElMessage.success('预算上限已保存'); }
   finally { saving.value = false; }
 }
+async function loadReimbursements() {
+  reimbursementLoading.value = true;
+  try {
+    reimbursements.value = await api.reimbursementStats({ ...reimbursementQuery.value,
+      from: reimbursementRange.value?.[0] || '', to: reimbursementRange.value?.[1] || '' });
+  } finally { reimbursementLoading.value = false; }
+}
+function resetReimbursements() {
+  reimbursementQuery.value = { name: '', studentId: '' };
+  reimbursementRange.value = [];
+  loadReimbursements();
+}
 onMounted(async () => {
   chart = echarts.init(chartEl.value);
   window.addEventListener('resize', resize);
-  await load();
+  await Promise.all([load(), ...(store.isAdmin ? [loadReimbursements()] : [])]);
 });
 onUnmounted(() => { window.removeEventListener('resize', resize); chart?.dispose(); });
 </script>
-

@@ -13,6 +13,29 @@ const { setAmountPolicy } = require('../services/amountPolicy');
 
 router.use(auth, requireAdmin);
 
+router.get('/reimbursement-stats', wrap(async (req, res) => {
+  const name = str(req.query.name, 50), studentId = str(req.query.studentId, 40);
+  const from = str(req.query.from, 10), to = str(req.query.to, 10);
+  if ((from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) || (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) || (from && to && from > to)) {
+    throw new ApiError(400, '开票日期范围不合法');
+  }
+  const where = ['i.reimbursed = 1'], args = [];
+  if (name) { where.push('u.name LIKE ?'); args.push(`%${name}%`); }
+  if (studentId) { where.push('u.student_id LIKE ?'); args.push(`%${studentId}%`); }
+  if (from) { where.push('i.issue_date >= ?'); args.push(from); }
+  if (to) { where.push('i.issue_date <= ?'); args.push(to); }
+  const rows = getDb().prepare(`SELECT u.id, u.name, u.student_id,
+    COUNT(i.id) AS count, COALESCE(SUM(ROUND(i.amount_incl_tax * 100)), 0) AS cents,
+    SUM(CASE WHEN i.amount_incl_tax IS NULL THEN 1 ELSE 0 END) AS missing_amount
+    FROM invoices i JOIN users u ON u.id = i.user_id WHERE ${where.join(' AND ')}
+    GROUP BY u.id ORDER BY cents DESC, u.id`).all(...args);
+  const users = rows.map((row) => ({ id: row.id, name: row.name, studentId: row.student_id,
+    count: row.count, amount: row.cents / 100, missingAmount: row.missing_amount }));
+  res.json({ users, count: users.reduce((n, u) => n + u.count, 0),
+    amount: rows.reduce((n, row) => n + row.cents, 0) / 100,
+    missingAmount: users.reduce((n, u) => n + u.missingAmount, 0) });
+}));
+
 router.put('/amount-policy', wrap(async (req, res) => {
   const policy = setAmountPolicy(req.body || {});
   writeLog(req, { action: 'update_amount_policy', targetType: 'invoice_amount_policy', detail: policy });

@@ -39,6 +39,7 @@ export default {
 
   // ---- 管理员：全部发票 / 汇总 / 状态 ----
   adminInvoices: (params) => http.get('/admin/invoices', { params: qs(params) }),
+  reimbursementStats: (params) => http.get('/admin/reimbursement-stats', { params: qs(params) }),
   async exportExcel(params) {
     const blob = await http.get('/admin/invoices/export', { params: qs(params), responseType: 'blob' });
     const a = document.createElement('a');
