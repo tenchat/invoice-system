@@ -55,6 +55,7 @@ export default {
   setAmountPolicy: (data) => http.put('/admin/amount-policy', data),
   printStatusSummary: () => http.get('/admin/print-status-summary'),
   markPrintStatus: (ids, status) => http.post('/admin/invoices/print-status', { ids, status, confirm: true }),
+  setInvoicesReimbursed: (ids, reimbursed) => http.post('/admin/invoices/reimbursement', { ids, reimbursed, confirm: true }),
   setLocked: (ids, locked) => http.post('/admin/invoices/lock', { ids, locked }),
   batchDeleteInvoices: (ids) => http.post('/admin/invoices/batch-delete', { ids, confirm: true }),
   adminLogs: () => http.get('/admin/logs'),
