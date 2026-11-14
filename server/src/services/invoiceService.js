@@ -141,8 +141,10 @@ function listInvoices(user, filters = {}) {
   const total = db.prepare(`SELECT COUNT(*) AS c FROM invoices i LEFT JOIN users u ON u.id = i.user_id ${clause}`).get(...args).c;
   const page = intIn(filters.page, 1, 1, 100000), size = intIn(filters.size, 20, 1, 100000);
   const sortColumns = {
+    studentName: 'u.name', studentId: 'u.student_id',
     invoiceNumber: 'i.invoice_number', issueDate: 'i.issue_date', sellerName: 'i.seller_name',
-    amountInclTax: 'i.amount_incl_tax', printStatus: 'i.print_status', locked: 'i.locked', createdAt: 'i.created_at'
+    amountInclTax: 'i.amount_incl_tax', printStatus: 'i.print_status', reimbursed: 'i.reimbursed',
+    locked: 'i.locked', createdAt: 'i.created_at'
   };
   const sortColumn = sortColumns[filters.sortBy] || 'i.created_at';
   const sortDirection = filters.sortOrder === 'ascending' ? 'ASC' : 'DESC';
