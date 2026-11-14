@@ -22,9 +22,6 @@
         <el-link v-if="!isAdmin" type="info" @click="router.push('/admin/login')">管理员入口 →</el-link>
         <el-link v-else type="info" @click="router.push('/login')">← 返回学生登录</el-link>
       </div>
-      <p v-if="!isAdmin" class="muted" style="font-size:12px;text-align:center;margin-top:14px">
-        仅支持电子发票（数电票）：XML / PDF / JPG / PNG，单文件 ≤ 10MB
-      </p>
     </el-card>
   </div>
 </template>
@@ -63,4 +60,3 @@ async function submit() {
 .login-card { width: 420px; max-width: 100%; border-radius: 14px; padding: 12px; }
 @media (max-width: 480px) { .login-card { padding: 4px; } }
 </style>
-
