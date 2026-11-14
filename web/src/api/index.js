@@ -35,6 +35,7 @@ export default {
   getBudget: () => http.get('/budget'),
   setBudget: (limit) => http.put('/budget', { limit }),
   setScanStatus: (id, scanned) => http.put(`/admin/invoices/${id}/scan`, { scanned }),
+  setInvoiceReimbursed: (id, reimbursed) => http.put(`/admin/invoices/${id}/reimbursement`, { reimbursed }),
 
   // ---- 管理员：全部发票 / 汇总 / 状态 ----
   adminInvoices: (params) => http.get('/admin/invoices', { params: qs(params) }),
@@ -66,6 +67,6 @@ export default {
   batches: () => http.get('/admin/print/batches'),
   batch: (id) => http.get(`/admin/print/batches/${id}`),
   batchInvoices: (id) => http.get(`/admin/print/batches/${id}/invoices`),
+  setBatchReimbursed: (id, reimbursed) => http.post(`/admin/print/batches/${id}/reimbursement`, { reimbursed, confirm: true }),
   undoBatch: (id) => http.post(`/admin/print/batches/${id}/undo`, { confirm: true })
 };
-

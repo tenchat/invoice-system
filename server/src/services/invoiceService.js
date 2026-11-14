@@ -5,7 +5,7 @@ const { ApiError } = require('../middleware/error');
 const { normalizeDraft, validateDraft, str, intIn, numOrNull } = require('../utils/validate');
 const { validateSubmission } = require('./amountPolicy');
 
-function toDto(row) {
+function toDto(row, includeAdminFields = false) {
   if (!row) return null;
   const j = (s, def) => { try { return JSON.parse(s || 'null') ?? def; } catch (_e) { return def; } };
   return {
@@ -22,6 +22,7 @@ function toDto(row) {
     warnings: j(row.warnings, []),
     parseStatus: row.parse_status,
     locked: !!row.locked,
+    ...(includeAdminFields ? { reimbursed: !!row.reimbursed } : {}),
     printStatus: !!row.print_status,
     printBatchId: row.print_batch_id,
     printedAt: row.printed_at,
@@ -149,7 +150,7 @@ function listInvoices(user, filters = {}) {
     .all(...args, size, (page - 1) * size);
   const withItems = !!filters.withItems;
   return {
-    list: rows.map(toDto),
+    list: rows.map((row) => toDto(row, isAdmin)),
     items: withItems ? getItems(rows.map((r) => r.id)) : undefined,
     total, page, size
   };
@@ -163,7 +164,7 @@ function getInvoice(id, user) {
   const row = getRaw(id);
   if (!row) throw new ApiError(404, '发票不存在');
   if (user.role !== 'admin' && row.user_id !== user.uid) throw new ApiError(403, '无权访问该发票');
-  const dto = toDto(row);
+  const dto = toDto(row, user.role === 'admin');
   dto.items = getItems([row.id])[row.id] || [];
   return dto;
 }

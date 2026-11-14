@@ -47,6 +47,13 @@ router.get('/batches/:id/invoices', wrap(async (req, res) => {
   res.json({ list: svc.getBatchInvoices(Number(req.params.id) || 0) });
 }));
 
+router.post('/batches/:id/reimbursement', wrap(async (req, res) => {
+  if (typeof req.body?.reimbursed !== 'boolean') throw new ApiError(400, '报销状态不合法');
+  if (req.body?.confirm !== true) throw new ApiError(400, '批量标记报销需要二次确认');
+  const r = svc.setBatchReimbursed(Number(req.params.id) || 0, req.body.reimbursed, req);
+  res.json(r);
+}));
+
 router.post('/batches/:id/undo', wrap(async (req, res) => {
   if (req.body?.confirm !== true) throw new ApiError(400, '撤销需要二次确认');
   const r = svc.undoBatch(Number(req.params.id) || 0, req);
@@ -55,4 +62,3 @@ router.post('/batches/:id/undo', wrap(async (req, res) => {
 }));
 
 module.exports = router;
-

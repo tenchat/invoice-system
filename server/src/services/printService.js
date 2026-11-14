@@ -53,6 +53,37 @@ function setLocked(ids, locked, req) {
   })();
 }
 
+/** Mark one or more invoices as reimbursed; caller must be an administrator. */
+function setReimbursed(ids, reimbursed, req, batchId = null) {
+  if (typeof reimbursed !== 'boolean') throw new ApiError(400, '报销状态不合法');
+  const list = idsOf(ids);
+  const db = getDb();
+  return transaction(() => {
+    const ph = list.map(() => '?').join(',');
+    const rows = db.prepare(`SELECT id FROM invoices WHERE id IN (${ph})`).all(...list);
+    if (rows.length !== list.length) throw new ApiError(404, '部分发票已不存在，请刷新后重试');
+    const r = db.prepare(`UPDATE invoices SET reimbursed = ?, updated_at = datetime('now','localtime')
+      WHERE id IN (${ph}) AND reimbursed <> ?`).run(reimbursed ? 1 : 0, ...list, reimbursed ? 1 : 0);
+    writeLog(req, {
+      action: reimbursed ? 'mark_reimbursed' : 'unmark_reimbursed',
+      targetType: batchId === null ? 'invoice' : 'print_batch',
+      targetId: batchId === null ? list.join(',') : batchId,
+      detail: { ids: list, reimbursed, ...(batchId === null ? {} : { batchId }) }
+    });
+    return { updated: r.changes, ids: list, reimbursed };
+  })();
+}
+
+function setBatchReimbursed(id, reimbursed, req) {
+  if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(400, '打印批次不存在');
+  const batch = getBatch(id);
+  if (batch.undone) throw new ApiError(400, '已撤销的打印批次不能批量标记报销');
+  const ids = getDb().prepare(`SELECT i.id FROM invoices i
+    JOIN print_batch_items bi ON bi.invoice_id = i.id WHERE bi.batch_id = ? ORDER BY i.id`).all(id).map((row) => row.id);
+  if (!ids.length) throw new ApiError(400, '该批次没有可标记的发票');
+  return setReimbursed(ids, reimbursed, req, id);
+}
+
 /** 打印/导出后生成批次；markPrinted=true 时同时把所选发票标记为已打印 */
 function createBatch({ ids, layout = {}, action = 'print', markPrinted = false, req }) {
   const list = idsOf(ids);
@@ -86,6 +117,7 @@ function batchDto(row) {
   try { layout = JSON.parse(row.layout || '{}'); } catch (_e) { /* ignore */ }
   return {
     id: row.id, operatorName: row.operator_name, count: row.count,
+    invoiceCount: row.invoice_count ?? null, reimbursedCount: row.reimbursed_count ?? 0,
     action: row.action, undone: !!row.undone,
     createdAt: row.created_at, undoneAt: row.undone_at,
     layout,
@@ -94,7 +126,12 @@ function batchDto(row) {
 }
 
 function listBatches() {
-  return getDb().prepare('SELECT * FROM print_batches ORDER BY id DESC').all().map(batchDto);
+  return getDb().prepare(`SELECT pb.*, COUNT(i.id) AS invoice_count,
+      COALESCE(SUM(CASE WHEN i.reimbursed = 1 THEN 1 ELSE 0 END), 0) AS reimbursed_count
+    FROM print_batches pb
+    LEFT JOIN print_batch_items bi ON bi.batch_id = pb.id
+    LEFT JOIN invoices i ON i.id = bi.invoice_id
+    GROUP BY pb.id ORDER BY pb.id DESC`).all().map(batchDto);
 }
 
 function getBatch(id) {
@@ -111,7 +148,7 @@ function getBatchInvoices(id) {
   const items = getItems(rows.map((r) => r.id));
   const positions = new Map((batch.layout.ids || []).map((invoiceId, index) => [invoiceId, index]));
   rows.sort((a, b) => (positions.get(a.id) ?? rows.length) - (positions.get(b.id) ?? rows.length));
-  return rows.map((r) => ({ ...toDto(r), items: items[r.id] || [] }));
+  return rows.map((r) => ({ ...toDto(r, true), items: items[r.id] || [] }));
 }
 
 /** 撤销批次：该批发票恢复到此前的打印状态（通常恢复为未打印） */
@@ -167,5 +204,4 @@ async function previewData(ids, sortBy = 'uploadedAt', order = 'asc') {
   return list;
 }
 
-module.exports = { printStatusSummary, markStatus, setLocked, createBatch, listBatches, getBatch, getBatchInvoices, undoBatch, previewData, printRows, idsOf };
-
+module.exports = { printStatusSummary, markStatus, setLocked, setReimbursed, setBatchReimbursed, createBatch, listBatches, getBatch, getBatchInvoices, undoBatch, previewData, printRows, idsOf };

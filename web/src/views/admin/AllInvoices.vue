@@ -73,10 +73,15 @@
         <el-table-column label="打印状态" width="100" align="center">
           <template #default="{ row }"><el-tag :type="row.printStatus ? 'success' : 'info'" size="small" effect="dark">{{ row.printStatus ? '已打印' : '未打印' }}</el-tag></template>
         </el-table-column>
+        <el-table-column label="报销状态" width="100" align="center">
+          <template #default="{ row }"><el-tag :type="row.reimbursed ? 'success' : 'info'" size="small">{{ row.reimbursed ? '已报销' : '未报销' }}</el-tag></template>
+        </el-table-column>
         <el-table-column label="锁定" width="70" align="center"><template #default="{ row }"><span v-if="row.locked" style="color:#e6a23c">已锁定</span><span v-else class="muted">—</span></template></el-table-column>
-        <el-table-column label="操作" width="170" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" :disabled="!row.fileId" @click="api.openRaw(row.fileId, row.detectedType)">原件</el-button>
+            <el-button link :type="row.reimbursed ? 'warning' : 'success'" size="small"
+              :loading="reimbursementId === row.id" @click="toggleReimbursed(row)">{{ row.reimbursed ? '取消报销' : '标记报销' }}</el-button>
             <el-button link type="primary" size="small" :disabled="deleting" :loading="openingId === row.id" @click="openEdit(row)">修改</el-button>
             <el-button link type="danger" size="small" :disabled="!!openingId || deleting" :loading="deletingId === row.id" @click="remove(row)">删除</el-button>
           </template>
@@ -112,6 +117,7 @@ const query = reactive({ q: '', name: '', studentId: '', seller: '', from: '', t
 const editVisible = ref(false), editDraft = ref(null), editId = ref(null);
 const openingId = ref(null), deletingId = ref(null), saving = ref(false);
 const batchDeleting = ref(false), invoiceTable = ref(null);
+const reimbursementId = ref(null);
 const deleting = computed(() => !!deletingId.value || batchDeleting.value);
 const policy = ref(null);
 
@@ -193,6 +199,18 @@ async function removeSelected() {
   finally { batchDeleting.value = false; }
 }
 
+async function toggleReimbursed(row) {
+  if (reimbursementId.value) return;
+  reimbursementId.value = row.id;
+  try {
+    const reimbursed = !row.reimbursed;
+    await api.setInvoiceReimbursed(row.id, reimbursed);
+    row.reimbursed = reimbursed;
+    ElMessage.success(reimbursed ? '已标记为已报销' : '已取消报销标记');
+  } catch (_error) { /* API displays the error. */ }
+  finally { reimbursementId.value = null; }
+}
+
 async function mark(status) {
   const ids = selection.value.map((r) => r.id);
   await ElMessageBox.confirm(`确定将选中的 ${ids.length} 张发票标记为「${status ? '已打印' : '未打印'}」吗？此操作会写入操作日志。`, '二次确认', { type: 'warning' });
@@ -213,4 +231,3 @@ function goPrint() {
 function exportExcel() { api.exportExcel({ ...query }); }
 onMounted(() => load());
 </script>
-

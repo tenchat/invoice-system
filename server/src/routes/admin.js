@@ -83,6 +83,13 @@ router.put('/invoices/:id/scan', wrap(async (req, res) => {
   res.json({ id, scanned: req.body.scanned });
 }));
 
+router.put('/invoices/:id/reimbursement', wrap(async (req, res) => {
+  if (typeof req.body?.reimbursed !== 'boolean') throw new ApiError(400, '报销状态不合法');
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) throw new ApiError(400, '发票不存在');
+  res.json(printSvc.setReimbursed([id], req.body.reimbursed, req));
+}));
+
 /** 批量标记打印状态：必须 confirm:true（服务端二次确认） */
 router.post('/invoices/print-status', wrap(async (req, res) => {
   const r = printSvc.markStatus(req.body?.ids, !!req.body?.status, req);
@@ -122,4 +129,3 @@ router.get('/logs', wrap(async (req, res) => {
 router.use('/users', require('./users'));
 
 module.exports = router;
-

@@ -83,6 +83,7 @@ function getDb() {
       for (const [table, column, type] of [
         ['invoices', 'fund_purpose', 'TEXT'],
         ['invoices', 'scan_status', 'INTEGER NOT NULL DEFAULT 0'],
+        ['invoices', 'reimbursed', 'INTEGER NOT NULL DEFAULT 0'],
         ['files', 'recognized_total', 'REAL'],
         ['users', 'deleted_at', 'TEXT'],
         ['users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0']
@@ -119,4 +120,3 @@ function getDb() {
 function transaction(fn) { return getDb().transaction(fn); }
 
 module.exports = { getDb, transaction };
-

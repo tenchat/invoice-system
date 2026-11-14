@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   remark            TEXT,
   fund_purpose      TEXT,
   scan_status       INTEGER NOT NULL DEFAULT 0,
+  reimbursed        INTEGER NOT NULL DEFAULT 0,     -- 管理员标记是否已报销
   field_sources     TEXT NOT NULL DEFAULT '{}',-- JSON: { "invoice": {...}, "items": [ {...} ] }
   warnings          TEXT NOT NULL DEFAULT '[]',-- JSON: 校验/二维码不一致警告
   parse_status      TEXT NOT NULL DEFAULT 'manual', -- xml|pdf|qr|ocr|manual|failed|mixed
@@ -135,4 +136,3 @@ CREATE TABLE IF NOT EXISTS budget_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   budget_limit REAL NOT NULL
 );
-
