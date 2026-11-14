@@ -28,6 +28,11 @@
             <el-tag :type="row.printStatus ? 'success' : 'info'" size="small" effect="dark">{{ row.printStatus ? '已打印' : '未打印' }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="reimbursed" label="报销状态" width="100" align="center" sortable="custom" :sort-orders="sortOrders">
+          <template #default="{ row }">
+            <el-tag :type="row.reimbursed ? 'success' : 'info'" size="small">{{ row.reimbursed ? '已报销' : '未报销' }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="locked" label="锁定" width="70" align="center" sortable="custom" :sort-orders="sortOrders">
           <template #default="{ row }"><el-tag v-if="row.locked" type="warning" size="small">已锁定</el-tag><span v-else class="muted">—</span></template>
         </el-table-column>
@@ -60,6 +65,7 @@
           <el-descriptions-item label="合计金额(不含税)">{{ yuan(detail.amountExclTax) }}</el-descriptions-item>
           <el-descriptions-item label="合计税额">{{ yuan(detail.totalTax) }}</el-descriptions-item>
           <el-descriptions-item label="价税合计"><b>{{ yuan(detail.amountInclTax) }}</b></el-descriptions-item>
+          <el-descriptions-item label="报销状态"><el-tag :type="detail.reimbursed ? 'success' : 'info'" size="small">{{ detail.reimbursed ? '已报销' : '未报销' }}</el-tag></el-descriptions-item>
           <el-descriptions-item label="备注">{{ detail.remark || '—' }}</el-descriptions-item>
           <el-descriptions-item label="资金用途">{{ detail.fundPurpose || '—' }}</el-descriptions-item>
         </el-descriptions>

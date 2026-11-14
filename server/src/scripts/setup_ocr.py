@@ -13,7 +13,7 @@ python = env_dir / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 cache = Path(tempfile.gettempdir()) / "invoice-pip-cache"
 subprocess.run([
     str(python), "-m", "pip", "install", "--cache-dir", str(cache),
-    "--timeout", "60", "--retries", "5", "-r", str(server / "requirements-ocr.txt"),
+    "--timeout", "60", "--retries", "5", "--extra-index-url", "https://pypi.org/simple",
+    "-r", str(server / "requirements-ocr.txt"),
 ], check=True)
 subprocess.run([str(python), "-X", "utf8", str(server / "src/parse/rapidocr_worker.py"), "--warmup"], check=True)
-
