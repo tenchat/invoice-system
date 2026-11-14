@@ -29,6 +29,7 @@ router.get('/invoices', wrap(async (req, res) => {
     from: str(req.query.from, 20), to: str(req.query.to, 20),
     minAmount: req.query.minAmount, maxAmount: req.query.maxAmount,
     status: req.query.status,
+    sortBy: str(req.query.sortBy, 50), sortOrder: req.query.sortOrder,
     page: intIn(req.query.page, 1, 1, 100000),
     size: intIn(req.query.size, 20, 1, 200),
     withItems: req.query.withItems === '1' || req.query.withItems === 'true'
