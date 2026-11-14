@@ -38,6 +38,12 @@
         <el-button size="small" :disabled="!selection.length || deleting" @click="mark(false)">标记为未打印</el-button>
         <el-button size="small" type="warning" plain :disabled="!selection.length || deleting" @click="lock(true)">锁定</el-button>
         <el-button size="small" plain :disabled="!selection.length || deleting" @click="lock(false)">解锁</el-button>
+        <el-button size="small" type="success" plain
+          :disabled="!selection.length || deleting || !!reimbursementId || batchReimbursement !== null || loading"
+          :loading="batchReimbursement === true" @click="setSelectedReimbursed(true)">标记为已报销</el-button>
+        <el-button size="small" type="warning" plain
+          :disabled="!selection.length || deleting || !!reimbursementId || batchReimbursement !== null || loading"
+          :loading="batchReimbursement === false" @click="setSelectedReimbursed(false)">标记为未报销</el-button>
         <el-button size="small" type="danger" plain :disabled="!selection.length || deleting || !!openingId || loading"
           :loading="batchDeleting" @click="removeSelected">批量删除</el-button>
         <el-button size="small" type="primary" :disabled="!selection.length || deleting" @click="goPrint">去拼版打印</el-button>
@@ -117,7 +123,7 @@ const query = reactive({ q: '', name: '', studentId: '', seller: '', from: '', t
 const editVisible = ref(false), editDraft = ref(null), editId = ref(null);
 const openingId = ref(null), deletingId = ref(null), saving = ref(false);
 const batchDeleting = ref(false), invoiceTable = ref(null);
-const reimbursementId = ref(null);
+const reimbursementId = ref(null), batchReimbursement = ref(null);
 const deleting = computed(() => !!deletingId.value || batchDeleting.value);
 const policy = ref(null);
 
@@ -209,6 +215,25 @@ async function toggleReimbursed(row) {
     ElMessage.success(reimbursed ? '已标记为已报销' : '已取消报销标记');
   } catch (_error) { /* API displays the error. */ }
   finally { reimbursementId.value = null; }
+}
+
+async function setSelectedReimbursed(reimbursed) {
+  if (!selection.value.length || batchReimbursement.value !== null || reimbursementId.value) return;
+  const ids = selection.value.map((row) => row.id);
+  batchReimbursement.value = reimbursed;
+  const statusText = reimbursed ? '已报销' : '未报销';
+  try {
+    await ElMessageBox.confirm(
+      `确定将选中的 ${ids.length} 张发票标记为${statusText}吗？该操作会写入操作日志。`,
+      `批量标记为${statusText}`,
+      { type: 'warning', confirmButtonText: '确认标记', cancelButtonText: '取消' }
+    );
+    const result = await api.setInvoicesReimbursed(ids, reimbursed);
+    invoiceTable.value?.clearSelection();
+    ElMessage.success(`已将 ${result.updated} 张发票标记为${statusText}`);
+    await load();
+  } catch (_error) { /* Cancelled or reported by API. */ }
+  finally { batchReimbursement.value = null; }
 }
 
 async function mark(status) {
