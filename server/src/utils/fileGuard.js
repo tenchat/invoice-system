@@ -77,4 +77,3 @@ function safeResolve(relPath) {
 }
 
 module.exports = { detectByMagic, assertFile, extOf, safeResolve };
-

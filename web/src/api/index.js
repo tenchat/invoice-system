@@ -62,6 +62,7 @@ export default {
   adminLogs: () => http.get('/admin/logs'),
 
   // ---- 拼版打印与批次 ----
+  resolveNumbers: (numbers) => http.post('/admin/print/resolve-numbers', { numbers }),
   previewData: (ids, sortBy, order) => http.post('/admin/print/preview-data', { ids, sortBy, order }),
   printDocument: (data) => http.post('/admin/print/document', data, { responseType: 'blob' }),
   unprintedIds: () => http.get('/admin/print/unprinted'),

@@ -8,4 +8,3 @@ for (const k of ['DOMMatrix', 'ImageData', 'Path2D', 'Image']) {
   if (!globalThis[k] && canvas[k]) globalThis[k] = canvas[k];
 }
 module.exports = canvas;
-

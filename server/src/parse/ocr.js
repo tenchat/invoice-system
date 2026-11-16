@@ -52,4 +52,3 @@ async function parseOcrImage(buffer) {
 }
 
 module.exports = { parseOcrImage };
-

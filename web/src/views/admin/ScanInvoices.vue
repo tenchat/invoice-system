@@ -84,4 +84,3 @@ onMounted(load);
 .preview { background: #eef1f5; padding: 12px; overflow: auto; text-align: center; }
 .preview img { max-width: 100%; max-height: 68vh; object-fit: contain; }
 </style>
-

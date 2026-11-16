@@ -123,4 +123,3 @@ function addItem() { props.draft.items.push(emptyRow()); props.draft.sources.ite
 function removeItem(i) { props.draft.items.splice(i, 1); props.draft.sources.items.splice(i, 1); }
 function colWidth(f) { return f === 'name' ? 200 : f === 'spec' ? 120 : 100; }
 </script>
-

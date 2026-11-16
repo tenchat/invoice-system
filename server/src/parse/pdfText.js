@@ -411,4 +411,3 @@ module.exports = {
   columnAnchors, isHeaderLine, allMoney, splitRowByAnchors, sanitizeItemRow,
   mergeRecoveredTextItems, recoverPypdfItemNumbers
 };
-

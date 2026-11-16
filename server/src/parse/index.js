@@ -151,4 +151,3 @@ async function parseFile({ buffer, detectedType, originalName }) {
 }
 
 module.exports = { parseFile, mergeLayers, PRIORITY };
-

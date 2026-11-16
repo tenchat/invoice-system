@@ -142,4 +142,3 @@ module.exports = {
   MAIN_FIELDS, ITEM_FIELDS, SOURCES, checkTaxId, toNumber, toDate,
   normalizeDraft, validateDraft, intIn, numOrNull, str
 };
-

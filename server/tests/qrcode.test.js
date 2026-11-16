@@ -44,4 +44,3 @@ test('合并：xml > pdf > qr 字段级覆盖，明细整体取最高优先级�
   assert.equal(m.items.length, 1);
   assert.equal(m.items[0].name, 'XML明细');           // 不跨层拼行
 });
-

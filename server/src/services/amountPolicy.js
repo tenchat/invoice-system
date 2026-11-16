@@ -39,4 +39,3 @@ function validateSubmission(invoice, recognizedTotal, fundPurpose) {
 }
 
 module.exports = { getAmountPolicy, setAmountPolicy, assertWithinLimit, validateSubmission };
-

@@ -127,4 +127,3 @@ function normalizeDateLoose(v) {
 }
 
 module.exports = { parseQrPayload, decodeQrFromRgba, compareQr, normDate };
-

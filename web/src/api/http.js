@@ -33,4 +33,3 @@ http.interceptors.response.use(
 
 export default http;
 export const authToken = () => localStorage.getItem('inv_token') || '';
-

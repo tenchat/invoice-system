@@ -126,4 +126,3 @@ function extractItemRows(root) {
 }
 
 module.exports = { normKey, MAIN_ALIASES, ITEM_ALIASES, matchMainField, matchItemField, isItemContainer, flattenLeaves, extractItemRows };
-

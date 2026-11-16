@@ -51,4 +51,3 @@ onMounted(async () => {
 });
 onUnmounted(() => { window.removeEventListener('resize', onResize); chart?.dispose(); });
 </script>
-

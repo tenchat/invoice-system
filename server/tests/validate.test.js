@@ -31,4 +31,3 @@ test('文件头：magic number 判定，扩展名不参与类型判定', () => {
   assert.equal(detectByMagic(Buffer.from('<?xml version="1.0"?><A><B>1</B></A>')), 'xml');
   assert.equal(detectByMagic(Buffer.from('MZ\x90\x00')), null);   // 伪造成 .pdf 的可执行文件
 });
-

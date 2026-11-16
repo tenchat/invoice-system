@@ -105,4 +105,3 @@ test('回归：明细串列产生的畸形数字留空，不编造看似合理�
   assert.equal(s.taxAmount, '2.16');
   assert.equal(s.name, '*移动通信设备*配件');
 });
-

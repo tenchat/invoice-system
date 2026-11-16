@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "sources": ["../src/worker.js"],
+  "sourceRoot": ".wrangler-dry-run",
+  "sourcesContent": ["const DEFAULT_API_ORIGIN = 'http://47.103.113.70:3001';\n\nexport default {\n  async fetch(request, env) {\n    const requestUrl = new URL(request.url);\n\n    if (requestUrl.pathname === '/api' || requestUrl.pathname.startsWith('/api/')) {\n      const apiOrigin = new URL(env.API_ORIGIN || DEFAULT_API_ORIGIN);\n      const upstreamUrl = new URL(`${requestUrl.pathname}${requestUrl.search}`, apiOrigin);\n\n      try {\n        // Forward the original method, headers, query string, and request body.\n        return await fetch(new Request(upstreamUrl, request));\n      } catch (error) {\n        return Response.json(\n          { message: 'API server is unavailable', detail: error.message },\n          { status: 502 }\n        );\n      }\n    }\n\n    return env.ASSETS.fetch(request);\n  }\n};\n"],
+  "mappings": ";AAAA,IAAM,qBAAqB;AAE3B,IAAO,iBAAQ;AAAA,EACb,MAAM,MAAM,SAAS,KAAK;AACxB,UAAM,aAAa,IAAI,IAAI,QAAQ,GAAG;AAEtC,QAAI,WAAW,aAAa,UAAU,WAAW,SAAS,WAAW,OAAO,GAAG;AAC7E,YAAM,YAAY,IAAI,IAAI,IAAI,cAAc,kBAAkB;AAC9D,YAAM,cAAc,IAAI,IAAI,GAAG,WAAW,QAAQ,GAAG,WAAW,MAAM,IAAI,SAAS;AAEnF,UAAI;AAEF,eAAO,MAAM,MAAM,IAAI,QAAQ,aAAa,OAAO,CAAC;AAAA,MACtD,SAAS,OAAO;AACd,eAAO,SAAS;AAAA,UACd,EAAE,SAAS,6BAA6B,QAAQ,MAAM,QAAQ;AAAA,UAC9D,EAAE,QAAQ,IAAI;AAAA,QAChB;AAAA,MACF;AAAA,IACF;AAEA,WAAO,IAAI,OAAO,MAAM,OAAO;AAAA,EACjC;AACF;",
+  "names": []
+}

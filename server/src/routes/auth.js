@@ -47,4 +47,3 @@ router.get('/me', auth, (req, res) => {
 });
 
 module.exports = router;
-

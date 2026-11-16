@@ -79,4 +79,3 @@ async function buildWorkbook(user, filters = {}) {
 }
 
 module.exports = { buildWorkbook };
-

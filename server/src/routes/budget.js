@@ -31,4 +31,3 @@ router.put('/', requireAdmin, wrap(async (req, res) => {
   res.json({ limit });
 }));
 module.exports = router;
-

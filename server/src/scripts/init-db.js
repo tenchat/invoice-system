@@ -14,4 +14,3 @@ db.exec(fs.readFileSync(config.schemaFile, 'utf8'));
 const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map((r) => r.name);
 console.log('✅ 数据库初始化完成:', config.dbFile);
 console.log('   表:', tables.join(', '));
-

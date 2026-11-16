@@ -73,4 +73,3 @@ body {
   .a4-page:last-child { break-after: auto; page-break-after: auto; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
-

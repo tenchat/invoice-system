@@ -18,6 +18,7 @@
           <div class="toolbar mb-12">
             <el-button size="small" type="primary" plain :disabled="outputBusy" @click="pickUnprinted">仅选择未打印发票</el-button>
             <el-button size="small" :loading="optionsLoading" :disabled="outputBusy || selectionLoading" @click="pickAll">加载全部发票</el-button>
+            <el-button size="small" type="success" plain :disabled="outputBusy" @click="openImportDialog">按号码批量导入</el-button>
           </div>
           <el-select v-model="selectedIds" multiple filterable collapse-tags collapse-tags-tooltip
             :loading="optionsLoading" :disabled="outputBusy" placeholder="可搜索勾选发票" style="width:100%" @change="selectionChanged">
@@ -113,6 +114,29 @@
         <div v-else class="page-card muted">选择发票并调整顺序后，点击「预览拼版」。</div>
       </el-col>
     </el-row>
+
+    <el-dialog v-model="importDialogOpen" title="按发票号码批量导入" width="520px" :close-on-click-modal="!importBusy">
+      <div class="muted mb-12" style="font-size:13px">
+        输入或粘贴一串发票号码（支持换行、空格、逗号、分号或顿号分隔），系统将严格按输入顺序排列并生成拼版。
+      </div>
+      <el-input v-model="numbersInput" type="textarea" :rows="7" :disabled="importBusy"
+        placeholder="例如：&#10;25312000000012345678&#10;25312000000087654321" />
+      <div class="flex-between mt-8" style="font-size:12px">
+        <span :class="parsedNumberTokens.length > 500 ? 'source-error' : 'muted'">
+          已识别 {{ parsedNumberTokens.length }} 个不重复发票号码{{ parsedNumberTokens.length > 500 ? '（单次最多 500 张）' : '' }}
+        </span>
+        <el-button v-if="numbersInput" link size="small" :disabled="importBusy" @click="numbersInput = ''">清空</el-button>
+      </div>
+      <template #footer>
+        <el-button :disabled="importBusy" @click="importDialogOpen = false">取消</el-button>
+        <el-button type="primary" plain :loading="importBusy"
+          :disabled="!parsedNumberTokens.length || parsedNumberTokens.length > 500"
+          @click="importNumbers(false)">导入并预览顺序</el-button>
+        <el-button type="primary" :loading="importBusy"
+          :disabled="!parsedNumberTokens.length || parsedNumberTokens.length > 500"
+          @click="importNumbers(true)">一键生成打印 PDF</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -141,7 +165,22 @@ const showing = ref(false);
 const previewVersion = ref(0);
 const loadedSources = ref(new Set());
 const failedSources = ref(new Set());
+const importDialogOpen = ref(false);
+const numbersInput = ref('');
+const importBusy = ref(false);
 let requestId = 0;
+
+const parsedNumberTokens = computed(() => {
+  const seen = new Set();
+  const list = [];
+  for (const token of numbersInput.value.split(/[\s,，;；、]+/)) {
+    const code = token.trim();
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    list.push(code);
+  }
+  return list;
+});
 
 const printedCount = computed(() => previewList.value.filter((row) => row.printStatus).length);
 const unprintableCount = computed(() => previewList.value.filter((row) => row.printError).length);
@@ -278,17 +317,79 @@ onMounted(async () => {
   await Promise.all([loadAllOptions(), loadSelection()]);
 });
 
+function openImportDialog() {
+  if (outputBusy.value) return;
+  importDialogOpen.value = true;
+}
+
+function openPrintTab() {
+  const tab = window.open('about:blank', '_blank');
+  if (!tab) {
+    ElMessage.warning('请允许弹出窗口，或使用「导出 PDF」后打开打印');
+    return null;
+  }
+  tab.opener = null;
+  tab.document.body.textContent = '正在生成打印 PDF…';
+  return tab;
+}
+
+async function importNumbers(directPrint) {
+  if (importBusy.value || outputBusy.value) return;
+  const tab = directPrint ? openPrintTab() : null;
+  if (directPrint && !tab) return;
+
+  importBusy.value = true;
+  try {
+    const res = await api.resolveNumbers(numbersInput.value);
+    if (!res.ids.length) {
+      if (tab && !tab.closed) tab.close();
+      await ElMessageBox.alert(`未找到任何匹配的发票：${res.missing.join('、')}`, '未找到发票', { type: 'warning' });
+      return;
+    }
+
+    layout.sortBy = 'manual';
+    selectedIds.value = res.ids;
+    importDialogOpen.value = false;
+    await loadSelection();
+    if (canPreview.value) showPreview();
+
+    if (res.missing.length) {
+      if (tab && !tab.closed) tab.close();
+      await ElMessageBox.alert(
+        `已按顺序导入 ${res.ids.length} 张发票，但以下 ${res.missing.length} 个发票号码未找到${directPrint ? '，已中止直接生成' : ''}：\n${res.missing.join('、')}`,
+        '部分发票未找到',
+        { type: 'warning' }
+      );
+      return;
+    }
+
+    if (!directPrint) {
+      ElMessage.success(`已按顺序导入 ${res.ids.length} 张发票`);
+      return;
+    }
+
+    if (!canPreview.value) {
+      if (tab && !tab.closed) tab.close();
+      ElMessage.warning('部分发票缺少可打印的 PDF 或图片原件，请处理后再生成');
+      return;
+    }
+
+    await generatePdf('print', tab);
+  } catch (_error) {
+    if (tab && !tab.closed) tab.close();
+  } finally {
+    importBusy.value = false;
+  }
+}
+
 async function outputDocument(action) {
   if (!previewReady.value || outputBusy.value) return;
-  const tab = action === 'print' ? window.open('about:blank', '_blank') : null;
-  if (action === 'print' && !tab) {
-    ElMessage.warning('请允许弹出窗口，或使用「导出 PDF」后打开打印');
-    return;
-  }
-  if (tab) {
-    tab.opener = null;
-    tab.document.body.textContent = '正在生成打印 PDF…';
-  }
+  const tab = action === 'print' ? openPrintTab() : null;
+  if (action === 'print' && !tab) return;
+  await generatePdf(action, tab);
+}
+
+async function generatePdf(action, tab) {
   const ids = previewList.value.map((row) => row.id);
   const snapshot = { ...layout, sortBy: 'manual' };
   let opened = false;
@@ -343,5 +444,4 @@ async function afterAction(action, ids, snapshot) {
 .order-label .source-error { color: #b42318; }
 .order-actions { display: flex; gap: 6px; }
 </style>
-
 

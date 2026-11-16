@@ -135,4 +135,3 @@ async function buildPrintDocument(rows, options) {
 }
 
 module.exports = { buildPrintDocument, originalPageCount };
-

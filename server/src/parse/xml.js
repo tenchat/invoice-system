@@ -64,4 +64,3 @@ function empty(error) {
 }
 
 module.exports = { parseXml };
-

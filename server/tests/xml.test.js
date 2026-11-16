@@ -69,4 +69,3 @@ test('XML：非法内容返回失败层而不抛异常（降级手动录入）',
   assert.deepEqual(r.invoice, {});
   assert.ok(r.error);
 });
-

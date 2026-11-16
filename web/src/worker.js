@@ -6,13 +6,10 @@ export default {
 
     if (requestUrl.pathname === '/api' || requestUrl.pathname.startsWith('/api/')) {
       const apiOrigin = new URL(env.API_ORIGIN || DEFAULT_API_ORIGIN);
-      const upstreamUrl = new URL(
-        `${requestUrl.pathname}${requestUrl.search}`,
-        apiOrigin
-      );
+      const upstreamUrl = new URL(`${requestUrl.pathname}${requestUrl.search}`, apiOrigin);
 
       try {
-        // Preserve the original method, headers, query string, and request body.
+        // Forward the original method, headers, query string, and request body.
         return await fetch(new Request(upstreamUrl, request));
       } catch (error) {
         return Response.json(

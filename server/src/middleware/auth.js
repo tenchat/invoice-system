@@ -40,4 +40,3 @@ const requireStudent = requireRole('student');
 const requireAdmin = requireRole('admin');
 
 module.exports = { signToken, auth, requireRole, requireStudent, requireAdmin };
-

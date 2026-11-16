@@ -27,4 +27,3 @@ function errorHandler(err, req, res, _next) {
 }
 
 module.exports = { ApiError, wrap, notFound, errorHandler };
-

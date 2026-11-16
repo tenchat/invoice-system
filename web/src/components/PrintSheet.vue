@@ -61,4 +61,3 @@ const pageStyle = computed(() => ({
 .inv-img img { width: 100%; height: 100%; object-fit: contain; object-position: top center; }
 .inv-caption { flex: 0 0 14pt; margin: 0; font-size: 7.33pt; line-height: 14pt; white-space: nowrap; }
 </style>
-

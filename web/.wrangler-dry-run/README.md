@@ -1,0 +1,1 @@
+This folder contains the built output assets for the worker "invoice-system-web" generated at 2026-11-13T18:43:17.066Z.

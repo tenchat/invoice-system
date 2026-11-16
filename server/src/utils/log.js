@@ -24,4 +24,3 @@ function writeLog(req, { action, targetType = null, targetId = null, detail = nu
 }
 
 module.exports = { writeLog };
-

@@ -10,6 +10,11 @@ const { buildPrintDocument } = require('../services/printDocument');
 
 router.use(auth, requireAdmin);
 
+/** 按一串发票号码顺序解析出对应的发票 ID 列表 */
+router.post('/resolve-numbers', wrap(async (req, res) => {
+  res.json(svc.resolveByNumbers(req.body?.numbers));
+}));
+
 /** 拼版预览数据：按指定排序返回票信息及原件页数。 */
 router.post('/preview-data', wrap(async (req, res) => {
   const { ids, sortBy, order } = req.body || {};

@@ -141,4 +141,3 @@ transaction(() => {
 console.log('✅ 示例数据已生成：3 名学生 / 6 张发票（2 张已打印）/ 1 个打印批次');
 console.log('   学生登录示例：姓名 吕相辉 + 学号 20244195');
 console.log('   管理员：admin / Admin@123456（见 server/config.js）');
-

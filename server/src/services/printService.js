@@ -13,6 +13,47 @@ function idsOf(ids) {
   return uniq;
 }
 
+/** 解析用户输入的发票号码串，去重并保留首次出现的顺序 */
+function parseInvoiceNumbers(input) {
+  const rawTokens = Array.isArray(input)
+    ? input.flatMap((v) => String(v ?? '').split(/[\s,，;；、]+/))
+    : typeof input === 'string'
+      ? input.split(/[\s,，;；、]+/)
+      : [];
+  const seen = new Set();
+  const numbers = [];
+  let duplicatesRemoved = 0;
+  for (const token of rawTokens) {
+    const code = token.trim();
+    if (!code) continue;
+    if (seen.has(code)) {
+      duplicatesRemoved++;
+      continue;
+    }
+    seen.add(code);
+    numbers.push(code);
+  }
+  if (!numbers.length) throw new ApiError(400, '请输入至少一个发票号码');
+  if (numbers.length > 500) throw new ApiError(400, '单次最多支持导入 500 个发票号码');
+  return { numbers, duplicatesRemoved };
+}
+
+/** 按输入发票号码顺序查找对应的发票 ID，并返回未匹配列表 */
+function resolveByNumbers(input) {
+  const { numbers, duplicatesRemoved } = parseInvoiceNumbers(input);
+  const ph = numbers.map(() => '?').join(',');
+  const rows = getDb().prepare(`SELECT id, invoice_number FROM invoices WHERE invoice_number IN (${ph})`).all(...numbers);
+  const idByNumber = new Map(rows.map((r) => [r.invoice_number, r.id]));
+  const ids = [];
+  const missing = [];
+  for (const num of numbers) {
+    const id = idByNumber.get(num);
+    if (id !== undefined) ids.push(id);
+    else missing.push(num);
+  }
+  return { ids, missing, totalInput: numbers.length, matchedCount: ids.length, duplicatesRemoved };
+}
+
 function printStatusSummary() {
   const r = getDb().prepare(`SELECT
     SUM(CASE WHEN print_status = 0 THEN 1 ELSE 0 END) AS unprinted,
@@ -204,4 +245,4 @@ async function previewData(ids, sortBy = 'uploadedAt', order = 'asc') {
   return list;
 }
 
-module.exports = { printStatusSummary, markStatus, setLocked, setReimbursed, setBatchReimbursed, createBatch, listBatches, getBatch, getBatchInvoices, undoBatch, previewData, printRows, idsOf };
+module.exports = { printStatusSummary, markStatus, setLocked, setReimbursed, setBatchReimbursed, createBatch, listBatches, getBatch, getBatchInvoices, undoBatch, previewData, printRows, idsOf, parseInvoiceNumbers, resolveByNumbers };

@@ -60,4 +60,3 @@ function doLogout() {
   router.push(wasAdmin ? '/admin/login' : '/login');
 }
 </script>
-
