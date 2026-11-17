@@ -7,6 +7,7 @@ const { writeLog } = require('../utils/log');
 const svc = require('../services/printService');
 const invSvc = require('../services/invoiceService');
 const { buildPrintDocument } = require('../services/printDocument');
+const { buildSummaryWorkbook } = require('../services/exportService');
 
 router.use(auth, requireAdmin);
 
@@ -50,6 +51,17 @@ router.get('/batches/:id', wrap(async (req, res) => {
 
 router.get('/batches/:id/invoices', wrap(async (req, res) => {
   res.json({ list: svc.getBatchInvoices(Number(req.params.id) || 0) });
+}));
+
+router.get('/batches/:id/export', wrap(async (req, res) => {
+  const id = Number(req.params.id) || 0;
+  const invoices = svc.getBatchInvoices(id);
+  const { buffer, count } = await buildSummaryWorkbook(invoices);
+  writeLog(req, { action: 'export_batch_excel', targetType: 'print_batch', targetId: id, detail: { count } });
+  const fname = `批次${id}_报销汇总_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fname)}`);
+  res.send(Buffer.from(buffer));
 }));
 
 router.post('/batches/:id/reimbursement', wrap(async (req, res) => {

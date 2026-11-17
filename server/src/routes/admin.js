@@ -8,7 +8,7 @@ const { intIn, str } = require('../utils/validate');
 const { writeLog } = require('../utils/log');
 const svc = require('../services/invoiceService');
 const printSvc = require('../services/printService');
-const { buildWorkbook } = require('../services/exportService');
+const { buildWorkbook, buildSummaryWorkbookFromFilters } = require('../services/exportService');
 const { setAmountPolicy } = require('../services/amountPolicy');
 
 router.use(auth, requireAdmin);
@@ -60,9 +60,13 @@ router.get('/invoices', wrap(async (req, res) => {
 }));
 
 router.get('/invoices/export', wrap(async (req, res) => {
-  const { buffer, count } = await buildWorkbook(req.user, { ...req.query, status: req.query.status });
-  writeLog(req, { action: 'export_excel', targetType: 'invoice', detail: { count, filters: req.query } });
-  const fname = `发票汇总_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const isSummary = req.query.format === 'summary';
+  const { buffer, count } = isSummary
+    ? await buildSummaryWorkbookFromFilters(req.user, { ...req.query, status: req.query.status })
+    : await buildWorkbook(req.user, { ...req.query, status: req.query.status });
+  writeLog(req, { action: isSummary ? 'export_summary_excel' : 'export_excel', targetType: 'invoice', detail: { count, filters: req.query } });
+  const prefix = isSummary ? '报销汇总' : '发票汇总';
+  const fname = `${prefix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fname)}`);
   res.send(Buffer.from(buffer));

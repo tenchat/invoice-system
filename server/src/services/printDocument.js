@@ -4,6 +4,7 @@ const { PDFDocument, degrees } = require('pdf-lib');
 const { createCanvas } = require('@napi-rs/canvas');
 const { ApiError } = require('../middleware/error');
 const { safeResolve } = require('../utils/fileGuard');
+const { renderPdfToPng } = require('../parse/raster');
 
 const PT_PER_MM = 72 / 25.4;
 const MAX_SHEETS = 500;
@@ -60,11 +61,29 @@ async function sourcePages(doc, row) {
     const source = await originalPdf(bytes);
     if (source.getPageCount() > MAX_SHEETS) throw new ApiError(422, 'PDF 原件页数超出单批打印限制');
     const result = [];
-    for (const original of source.getPages()) {
+    const pages = source.getPages();
+    for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+      const original = pages[pageIndex];
+      const hasAnnots = Boolean(original.node.Annots()?.size());
+      const hasContents = Boolean(original.node.Contents());
+      // pdf-lib 的 embedPage 只复制页面 Contents，会丢失电子签章/发票专用章等 Annots 注释流。
+      // 含注释或无 Contents 的页面改为高分辨率栅格化嵌入，保留印章与表单外观。
+      if (hasAnnots || !hasContents) {
+        const rendered = await renderPdfToPng(bytes, 3, pageIndex + 1);
+        if (rendered?.png) {
+          const image = await doc.embedPng(rendered.png);
+          result.push({
+            width: image.width,
+            height: image.height,
+            draw: (page, bounds) => page.drawImage(image, bounds)
+          });
+          continue;
+        }
+      }
       const crop = original.getCropBox();
       const rotation = ((original.getRotation().angle % 360) + 360) % 360;
       const swapped = rotation === 90 || rotation === 270;
-      const content = original.node.Contents() && await doc.embedPage(original, {
+      const content = hasContents && await doc.embedPage(original, {
         left: crop.x, bottom: crop.y, right: crop.x + crop.width, top: crop.y + crop.height
       });
       result.push({

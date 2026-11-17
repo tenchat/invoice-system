@@ -2,6 +2,14 @@ import http, { authToken } from './http';
 
 const qs = (params) => Object.fromEntries(Object.entries(params || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined));
 
+function downloadExcelBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+
 export default {
   // ---- 认证 ----
   studentLogin: (data) => http.post('/auth/student/login', data),
@@ -42,11 +50,11 @@ export default {
   reimbursementStats: (params) => http.get('/admin/reimbursement-stats', { params: qs(params) }),
   async exportExcel(params) {
     const blob = await http.get('/admin/invoices/export', { params: qs(params), responseType: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    a.download = `发票汇总_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    downloadExcelBlob(blob, `发票汇总_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  },
+  async exportSummaryExcel(params) {
+    const blob = await http.get('/admin/invoices/export', { params: qs({ ...params, format: 'summary' }), responseType: 'blob' });
+    downloadExcelBlob(blob, `报销汇总_${new Date().toISOString().slice(0, 10)}.xlsx`);
   },
   userSummary: () => http.get('/admin/users/summary'),
   users: () => http.get('/admin/users'),
@@ -70,6 +78,10 @@ export default {
   batches: () => http.get('/admin/print/batches'),
   batch: (id) => http.get(`/admin/print/batches/${id}`),
   batchInvoices: (id) => http.get(`/admin/print/batches/${id}/invoices`),
+  async exportBatchExcel(id) {
+    const blob = await http.get(`/admin/print/batches/${id}/export`, { responseType: 'blob' });
+    downloadExcelBlob(blob, `批次${id}_报销汇总_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  },
   setBatchReimbursed: (id, reimbursed) => http.post(`/admin/print/batches/${id}/reimbursement`, { reimbursed, confirm: true }),
   undoBatch: (id) => http.post(`/admin/print/batches/${id}/undo`, { confirm: true })
 };

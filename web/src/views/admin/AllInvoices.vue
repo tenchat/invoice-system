@@ -11,6 +11,7 @@
         </div>
         <div class="toolbar">
           <el-button size="small" @click="quickUnprinted">仅看未打印</el-button>
+          <el-button size="small" type="success" @click="exportSummaryExcel">导出报销汇总 Excel</el-button>
           <el-button size="small" type="success" plain @click="exportExcel">导出 Excel（含明细）</el-button>
         </div>
       </div>
@@ -265,5 +266,6 @@ function goPrint() {
   router.push('/a/print');
 }
 function exportExcel() { api.exportExcel({ ...query }); }
+function exportSummaryExcel() { api.exportSummaryExcel({ ...query }); }
 onMounted(() => load());
 </script>

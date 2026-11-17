@@ -18,6 +18,15 @@ const ITEM_COLS = [
   ['序号', 'sortOrder', 8], ['项目名称', 'name', 30], ['规格型号', 'spec', 16], ['单位', 'unit', 10],
   ['数量', 'quantity', 12], ['单价', 'unitPrice', 14], ['金额', 'amount', 14], ['税率', 'taxRate', 10], ['税额', 'taxAmount', 14]
 ];
+const SUMMARY_COLS = [
+  ['发票ID', 'id', 10], ['姓名', 'studentName', 12], ['学号', 'studentId', 16], ['序号', 'seq', 8],
+  ['发票号码', 'invoiceNumber', 24], ['购买方名称', 'buyerName', 26], ['购买方税号', 'buyerTaxId', 24],
+  ['开票单位', 'sellerName', 26], ['开票日期', 'issueDate', 14], ['开票内容', 'content', 30],
+  ['发票金额', 'amountInclTax', 16]
+];
+const PERSON_COLS = [
+  ['姓名', 'studentName', 14], ['学号', 'studentId', 18], ['发票张数', 'count', 12], ['应报销金额', 'totalAmount', 16]
+];
 
 function decorate(ws, cols) {
   ws.columns = cols.map(([header, key, width]) => ({ header, key, width }));
@@ -78,4 +87,78 @@ async function buildWorkbook(user, filters = {}) {
   return { buffer: await wb.xlsx.writeBuffer(), count: list.length };
 }
 
-module.exports = { buildWorkbook };
+/** 生成精简报销 Excel：Sheet1 报销明细（明细仅取第一项、金额仅取价税合计），Sheet2 人员报销统计 */
+async function buildSummaryWorkbook(list, itemsMap = null) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = '数电发票收集与拼版打印系统';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('报销明细');
+  decorate(ws, SUMMARY_COLS);
+  const personStats = new Map();
+  let totalCents = 0;
+
+  list.forEach((inv, index) => {
+    const invItems = itemsMap ? (itemsMap[inv.id] || []) : (inv.items || []);
+    const firstItemName = invItems[0]?.name || '';
+    const cents = Math.round(Number(inv.amountInclTax || 0) * 100);
+    totalCents += cents;
+
+    ws.addRow({
+      id: inv.id,
+      studentName: inv.studentName || '',
+      studentId: inv.studentId || '',
+      seq: index + 1,
+      invoiceNumber: inv.invoiceNumber || '',
+      buyerName: inv.buyerName || '',
+      buyerTaxId: inv.buyerTaxId || '',
+      sellerName: inv.sellerName || '',
+      issueDate: inv.issueDate || '',
+      content: firstItemName,
+      amountInclTax: inv.amountInclTax ?? null
+    });
+
+    const key = inv.userId ?? `${inv.studentId || ''}::${inv.studentName || ''}`;
+    const entry = personStats.get(key) || {
+      studentName: inv.studentName || '未命名',
+      studentId: inv.studentId || '',
+      count: 0,
+      cents: 0
+    };
+    entry.count += 1;
+    entry.cents += cents;
+    personStats.set(key, entry);
+  });
+  ws.getColumn('amountInclTax').numFmt = '#,##0.00';
+
+  const ws2 = wb.addWorksheet('人员报销统计');
+  decorate(ws2, PERSON_COLS);
+  const sortedPeople = [...personStats.values()].sort(
+    (a, b) => b.cents - a.cents || String(a.studentId).localeCompare(String(b.studentId))
+  );
+  for (const person of sortedPeople) {
+    ws2.addRow({
+      studentName: person.studentName,
+      studentId: person.studentId,
+      count: person.count,
+      totalAmount: person.cents / 100
+    });
+  }
+  const totalRow = ws2.addRow({
+    studentName: '合计',
+    studentId: '',
+    count: list.length,
+    totalAmount: totalCents / 100
+  });
+  totalRow.font = { bold: true };
+  ws2.getColumn('totalAmount').numFmt = '#,##0.00';
+
+  return { buffer: await wb.xlsx.writeBuffer(), count: list.length };
+}
+
+async function buildSummaryWorkbookFromFilters(user, filters = {}) {
+  const { list, items } = listInvoices(user, { ...filters, page: 1, size: 100000, withItems: true });
+  return buildSummaryWorkbook(list, items);
+}
+
+module.exports = { buildWorkbook, buildSummaryWorkbook, buildSummaryWorkbookFromFilters };

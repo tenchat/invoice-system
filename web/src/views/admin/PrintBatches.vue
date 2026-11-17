@@ -20,9 +20,11 @@
           <template #default="{ row }"><el-tag :type="row.undone ? 'info' : 'success'" size="small">{{ row.undone ? '已撤销' : '有效' }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="undoneAt" label="撤销时间" width="170" />
-        <el-table-column label="操作" width="370" fixed="right">
+        <el-table-column label="操作" width="440" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="showItems(row)">查看发票</el-button>
+            <el-button link type="success" size="small" :loading="exportingBatchId === row.id"
+              :disabled="!row.invoiceCount" @click="exportBatchExcel(row)">导出Excel</el-button>
             <el-button link type="primary" size="small" @click="reprint(row)">重新打印该批次</el-button>
             <el-button link :type="isBatchReimbursed(row) ? 'warning' : 'success'" size="small"
               :disabled="row.undone || !row.invoiceCount || reimbursementBatchId === row.id"
@@ -36,25 +38,40 @@
       </el-table>
     </div>
 
-    <el-dialog v-model="visible" :title="`批次 #${current?.id} 内发票（${items.length}）`" width="900px" destroy-on-close>
+    <el-dialog v-model="visible" :title="`批次 #${current?.id} 内发票（${items.length}）`" width="1040px" destroy-on-close>
       <p v-if="current && items.length < current.count" class="muted">该批次原有 {{ current.count }} 张发票，其中 {{ current.count - items.length }} 张已删除。</p>
-      <p v-if="current" class="muted">报销进度：{{ current.reimbursedCount }}/{{ current.invoiceCount }} 张</p>
+      <div v-if="current" class="flex-between mb-12">
+        <span class="muted">报销进度：{{ current.reimbursedCount }}/{{ current.invoiceCount }} 张</span>
+        <el-button size="small" type="success" :loading="exportingBatchId === current.id"
+          :disabled="!items.length" @click="exportBatchExcel(current)">导出本批次报销 Excel</el-button>
+      </div>
+      <div v-if="personSummary.length" class="mb-12" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span class="muted" style="font-size:12px">人员报销统计：</span>
+        <el-tag v-for="p in personSummary" :key="`${p.studentId}-${p.studentName}`" size="small" effect="plain">
+          {{ p.studentName }}{{ p.studentId ? `(${p.studentId})` : '' }} · {{ p.count }}张 · {{ yuan(p.amount) }}
+        </el-tag>
+      </div>
       <el-table :data="items" border size="small" max-height="520">
-        <el-table-column prop="studentName" label="姓名" width="100" />
-        <el-table-column prop="studentId" label="学号" width="130" />
-        <el-table-column prop="invoiceNumber" label="发票号码" min-width="190" />
-        <el-table-column prop="issueDate" label="开票日期" width="112" />
-        <el-table-column prop="sellerName" label="销售方" min-width="150" show-overflow-tooltip />
-        <el-table-column label="价税合计" width="110" align="right"><template #default="{ row }">{{ yuan(row.amountInclTax) }}</template></el-table-column>
-        <el-table-column label="打印状态" width="100" align="center"><template #default="{ row }"><el-tag size="small" :type="row.printStatus ? 'success' : 'info'">{{ row.printStatus ? '已打印' : '未打印' }}</el-tag></template></el-table-column>
-        <el-table-column label="报销状态" width="100" align="center"><template #default="{ row }"><el-tag size="small" :type="row.reimbursed ? 'success' : 'info'">{{ row.reimbursed ? '已报销' : '未报销' }}</el-tag></template></el-table-column>
+        <el-table-column type="index" label="序号" width="56" align="center" />
+        <el-table-column prop="id" label="发票ID" width="76" align="center" />
+        <el-table-column prop="studentName" label="姓名" width="90" />
+        <el-table-column prop="studentId" label="学号" width="120" />
+        <el-table-column prop="invoiceNumber" label="发票号码" min-width="180" />
+        <el-table-column prop="sellerName" label="开票单位" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="issueDate" label="开票日期" width="108" />
+        <el-table-column label="开票内容" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.items?.[0]?.name || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="发票金额" width="106" align="right"><template #default="{ row }">{{ yuan(row.amountInclTax) }}</template></el-table-column>
+        <el-table-column label="打印状态" width="90" align="center"><template #default="{ row }"><el-tag size="small" :type="row.printStatus ? 'success' : 'info'">{{ row.printStatus ? '已打印' : '未打印' }}</el-tag></template></el-table-column>
+        <el-table-column label="报销状态" width="90" align="center"><template #default="{ row }"><el-tag size="small" :type="row.reimbursed ? 'success' : 'info'">{{ row.reimbursed ? '已报销' : '未报销' }}</el-tag></template></el-table-column>
       </el-table>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import api from '../../api';
@@ -64,6 +81,31 @@ const router = useRouter();
 const list = ref([]), items = ref([]), loading = ref(false);
 const visible = ref(false), current = ref(null);
 const reimbursementBatchId = ref(null);
+const exportingBatchId = ref(null);
+
+const personSummary = computed(() => {
+  const map = new Map();
+  for (const inv of items.value) {
+    const key = inv.userId ?? `${inv.studentId || ''}::${inv.studentName || ''}`;
+    const entry = map.get(key) || { studentName: inv.studentName || '未命名', studentId: inv.studentId || '', count: 0, cents: 0 };
+    entry.count += 1;
+    entry.cents += Math.round(Number(inv.amountInclTax || 0) * 100);
+    map.set(key, entry);
+  }
+  return [...map.values()]
+    .sort((a, b) => b.cents - a.cents || String(a.studentId).localeCompare(String(b.studentId)))
+    .map((p) => ({ ...p, amount: p.cents / 100 }));
+});
+
+async function exportBatchExcel(row) {
+  if (exportingBatchId.value || !row?.id) return;
+  exportingBatchId.value = row.id;
+  try {
+    await api.exportBatchExcel(row.id);
+  } finally {
+    exportingBatchId.value = null;
+  }
+}
 
 async function load() {
   loading.value = true;
